@@ -9,7 +9,13 @@ If your plugin does not need CSS, delete this file.
 
 /* Kayday Modal Styles */
 .kayday-container-tasks {
-    margin-top: 15px;
+    margin-top: 4px;
+	margin-bottom: 4px;
+}
+
+.kayday-tasks-header {
+	font-size: 12px;
+	font-weight: bold;
 }
 
 .kayday-container-filter {

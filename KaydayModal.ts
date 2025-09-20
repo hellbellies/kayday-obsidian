@@ -18,8 +18,9 @@ export default class KaydayModal extends Modal {
 	private contexts: KaydayContext[] = []
 	private selectedContext = '';
 
-	private divTasks: HTMLDivElement | null = null;
 	private divFilter: HTMLDivElement | null = null;
+	private divTasksOpen: HTMLDivElement | null = null;
+	private divTasksDone: HTMLDivElement | null = null;
 
 	constructor(app: App) {
 		super(app);
@@ -40,10 +41,11 @@ export default class KaydayModal extends Modal {
 	renderUi() {
 		console.log('Building UI...');
 		this.contentEl.empty();
-		this.divTasks = this.contentEl.createDiv({cls: 'kayday-container-tasks'});
 		this.divFilter = this.contentEl.createDiv({cls: 'kayday-container-filter'});
-		this.contentEl.appendChild(this.divFilter);
-		this.contentEl.appendChild(this.divTasks);
+		this.contentEl.createEl('div', {text: 'Open Tasks', cls: 'kayday-tasks-header'});
+		this.divTasksOpen = this.contentEl.createDiv({cls: 'kayday-container-tasks'});
+		this.contentEl.createEl('div', {text: 'Completed Tasks', cls: 'kayday-tasks-header'});
+		this.divTasksDone = this.contentEl.createDiv({cls: 'kayday-container-tasks'});
 	}
 
 	renderFilter() {
@@ -64,45 +66,71 @@ export default class KaydayModal extends Modal {
 	}
 
 	renderTasks() {
-		if(!this.divTasks) return;
-		this.divTasks.empty();
-		const divTasks = this.divTasks
-
-		const tasksToRender = this.selectedContext ? this.tasks.filter(task => task.context === this.selectedContext) : this.tasks;
-		tasksToRender.forEach(task => {
-			// Determine if the task is completed
-			const isCompleted = this.isTaskCompleted(task);
-
-			// create the task item container
-			const taskDiv = divTasks.createEl('div', {cls: 'kayday-task-item'});
-			
-			// Add task icon
-			const taskIcon = taskDiv.createEl('span', {cls: 'kayday-task-icon'});
-			// Use different icons based on task properties
-			const iconName = isCompleted ? 'check-square' : 'square';
-			setIcon(taskIcon, iconName);
-			
-			// Add task title
-			const taskTitleDiv = taskDiv.createEl('div', {text: task.title, cls: 'kayday-task-title'});
-			// add repeat icon if repeat is true
-			if(task.repeat) {
-				const repeatIcon = taskTitleDiv.createEl('span', {cls: 'kayday-task-icon-repeat'});
-				setIcon(repeatIcon, 'refresh-cw');
-			}
-			
-			// Add context badge if it exists
-			if (task.context) {
-				taskDiv.createEl('span', {
-					text: task.context,
-					cls: 'kayday-context-badge'
-				});
-			}
-			
-			taskDiv.onclick = () => {
-				this.app.workspace.openLinkText(task.file.path, '', false);
-				this.close();
+		// no tasks div, nothing place to render into
+		if(!this.divTasksOpen || !this.divTasksDone) return;
+		
+		// filter tasks based on selected context
+		const tasksFiltered = this.selectedContext ? this.tasks.filter(task => task.context === this.selectedContext) : this.tasks;
+		// separate tasks into open and done
+		const tasksOpen: KaydayTask[] = [];
+		const tasksDone: KaydayTask[] = [];
+		tasksFiltered.forEach(task => {
+			if(this.isTaskCompleted(task)) {
+				tasksDone.push(task);
+			} else {
+				tasksOpen.push(task);
 			}
 		});
+
+		// render open tasks
+		this.divTasksOpen.empty();
+		const divTasksOpen = this.divTasksOpen; // for easier access in the loop below
+		tasksOpen.forEach(task => {
+			this.renderTask(task, divTasksOpen);
+		});
+
+		// render done tasks
+		this.divTasksDone.empty();
+		const divTasksDone = this.divTasksDone; // for easier access in the loop below
+		tasksDone.forEach(task => {
+			this.renderTask(task, divTasksDone);
+		});
+	}
+
+	private renderTask(task: KaydayTask, container: HTMLDivElement) {
+		// Determine if the task is completed
+		const isCompleted = this.isTaskCompleted(task);
+
+		// create the task item container
+		const taskDiv = container.createEl('div', {cls: 'kayday-task-item'});
+		
+		// Add task icon
+		const taskIcon = taskDiv.createEl('span', {cls: 'kayday-task-icon'});
+		// Use different icons based on task properties
+		const iconName = isCompleted ? 'check-square' : 'square';
+		setIcon(taskIcon, iconName);
+		
+		// Add task title
+		const taskTitleDiv = taskDiv.createEl('div', {text: task.title, cls: 'kayday-task-title'});
+		// add repeat icon if repeat is true
+		if(task.repeat) {
+			const repeatIcon = taskTitleDiv.createEl('span', {cls: 'kayday-task-icon-repeat'});
+			setIcon(repeatIcon, 'refresh-cw');
+		}
+		
+		// Add context badge if it exists
+		if (task.context) {
+			taskDiv.createEl('span', {
+				text: task.context,
+				cls: 'kayday-context-badge'
+			});
+		}
+		
+		taskDiv.onclick = () => {
+			this.app.workspace.openLinkText(task.file.path, '', false);
+			this.close();
+		}
+	
 	}
 
 	private collectData(app: App) {
