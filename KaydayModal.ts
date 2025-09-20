@@ -9,6 +9,7 @@ type KaydayTask = {
 	repeat: boolean;
 	completedOn: Date | null;
 	days: Array<KaydayWeekday>;
+	duration: number; // in minutes
 }
 type KaydayContext = {
 	value: string;
@@ -94,8 +95,10 @@ export default class KaydayModal extends Modal {
 			}
 		});
 		// sort tasks
+		const maxInt = 9999 // Number.MAX_SAFE_INTEGER;
 		tasksDone.sort((a, b) => (b.completedOn?.getTime() ?? 0) - (a.completedOn?.getTime() ?? 0))
-
+		tasksToday.sort((a, b) => (a.duration || maxInt) - (b.duration || maxInt))
+		tasksUpcoming.sort((a, b) => (b.duration || maxInt) - (a.duration || maxInt))
 		// render task groups
 		this.renderTasksGroup(this.divTasksToday, tasksToday);
 		this.renderTasksGroup(this.divTasksUpcoming, tasksUpcoming);
@@ -136,6 +139,14 @@ export default class KaydayModal extends Modal {
 		if(task.repeat) {
 			const repeatIcon = taskTitleDiv.createEl('span', {cls: 'kayday-task-icon-repeat'});
 			setIcon(repeatIcon, 'refresh-cw');
+		}
+
+		// add duration if it exists
+		if(task.duration && task.duration > 0) {
+			taskDiv.createEl('span', {
+				text: `${task.duration}'`,
+				cls: 'kayday-context-badge'
+			});
 		}
 		
 		// Add context badge if it exists
@@ -185,6 +196,9 @@ export default class KaydayModal extends Modal {
 			// get days
 			const daysRaw = metadata?.frontmatter?.days as string[] || [];
 			const days: KaydayWeekday[] = daysRaw.map(day => this.stringToDay(day)).filter((day): day is KaydayWeekday => day !== null);
+			// get duration
+			const parsedDuration = parseInt(metadata?.frontmatter?.duration || ''); // in minutes
+			const duration = isNaN(parsedDuration) ? 0 : parsedDuration;
 			// collect task
 			this.tasks.push({
 				file,
@@ -193,6 +207,7 @@ export default class KaydayModal extends Modal {
 				repeat,
 				completedOn,
 				days,
+				duration,
 			})
 		});
 	}
