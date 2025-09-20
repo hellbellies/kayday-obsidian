@@ -93,6 +93,8 @@ export default class KaydayModal extends Modal {
 				}
 			}
 		});
+		// sort tasks
+		tasksDone.sort((a, b) => (b.completedOn?.getTime() ?? 0) - (a.completedOn?.getTime() ?? 0))
 
 		// render task groups
 		this.renderTasksGroup(this.divTasksToday, tasksToday);
