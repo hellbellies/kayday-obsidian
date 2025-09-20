@@ -66,7 +66,6 @@ export default class KaydayModal extends Modal {
 		// this.divFilter.appendChild(contextSelect);
 		contextSelect.onchange = (e) => {
 			this.selectedContext = (e.target as HTMLSelectElement).value;
-			console.log('Selected context:', this.selectedContext);
 			this.renderTasks();
 		}
 	}
@@ -112,7 +111,7 @@ export default class KaydayModal extends Modal {
 		}
 	}
 
-	private renderTask(task: KaydayTask, container: HTMLDivElement) {
+	private async renderTask(task: KaydayTask, container: HTMLDivElement) {
 		// Determine if the task is completed
 		const isCompleted = this.isTaskCompleted(task);
 
@@ -121,6 +120,10 @@ export default class KaydayModal extends Modal {
 		
 		// Add task icon
 		const taskIcon = taskDiv.createEl('span', {cls: 'kayday-task-icon'});
+		taskIcon.onclick = async (e) => {
+			e.stopImmediatePropagation();
+			await this.toggleCompletedOn(task);
+		};
 		// Use different icons based on task properties
 		const iconName = isCompleted ? 'check-square' : 'square';
 		setIcon(taskIcon, iconName);
@@ -149,8 +152,13 @@ export default class KaydayModal extends Modal {
 	}
 
 	private collectData(app: App) {
+		// TODO: use this.app instead of passing app as parameter
+		// clear current data
+		this.tasks = [];
+		this.contexts = [];
+
 		// find Kayday folder
-		const kaydayFolder = app.vault.getAbstractFileByPath('Kayday');
+		const kaydayFolder = this.app.vault.getAbstractFileByPath('Kayday');
 		if (!(kaydayFolder instanceof TFolder)) {
 			return [];
 		}
@@ -160,7 +168,7 @@ export default class KaydayModal extends Modal {
 		// gather tasks and contexts
 		files.forEach(file => {
 			// get metadata
-			const metadata = app.metadataCache.getFileCache(file);
+			const metadata = this.app.metadataCache.getFileCache(file);
 			// get context 
 			// TODO: we cannot be sure this is a string and not an array, can we?
 			const context = metadata?.frontmatter?.context || '';
@@ -171,7 +179,7 @@ export default class KaydayModal extends Modal {
 			// TODO: how can we be sure this is a boolean and not a string?
 			const repeat = metadata?.frontmatter?.repeat || false;	
 			// get completed data 
-			// TODO: how can we be sure this is a date and not a string?
+			// TODO: make sure this string is a valid date and not a string? does it tell frontmatter what it is?
 			const completedOn = metadata?.frontmatter?.completedOn ? new Date(metadata.frontmatter.completedOn) : null;
 			// get days
 			const daysRaw = metadata?.frontmatter?.days as string[] || [];
@@ -186,6 +194,19 @@ export default class KaydayModal extends Modal {
 				days,
 			})
 		});
+	}
+
+	private async toggleCompletedOn(task: KaydayTask) {
+		// update the task's completedOn date based on the completed parameter
+		const completedOn = this.app.metadataCache.getFileCache(task.file)?.frontmatter?.completedOn;
+		const value = completedOn ? null : new Date().toISOString();
+		await this.app.fileManager.processFrontMatter(task.file, (frontmatter) => {
+			frontmatter.completedOn = value;
+		})
+		// gather data again to update the task in memory
+		this.collectData(this.app);
+		// re-render the task list
+		this.renderTasks();
 	}
 
 	private isTaskDueToday(task: KaydayTask): boolean {
