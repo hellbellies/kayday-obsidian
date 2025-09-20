@@ -7,3 +7,4 @@
     -   "1,2,5,6"
     -   "1-3,12-18"
 -   hide completed tasks by default, let user toggle ... probably best to have the renderTasksGroup() method do it all (including the heading)
+-   add Kayday modal toggle to menu for mobile

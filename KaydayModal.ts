@@ -2,6 +2,7 @@ import { App, Modal, TAbstractFile, TFile, TFolder, setIcon } from 'obsidian';
 
 
 type KaydayWeekday = 0|1|2|3|4|5|6; // 0 = Sunday, 1 = Monday, etc.
+type KaydayPriority = 1|2|3; // 1 = low, 2 = medium, 3 = high
 type KaydayTask = {
 	file: TFile;
 	title: string;
@@ -10,6 +11,7 @@ type KaydayTask = {
 	completedOn: Date | null;
 	days: Array<KaydayWeekday>;
 	duration: number; // in minutes
+	priority: KaydayPriority;
 }
 type KaydayContext = {
 	value: string;
@@ -95,10 +97,24 @@ export default class KaydayModal extends Modal {
 			}
 		});
 		// sort tasks
-		const maxInt = 9999 // Number.MAX_SAFE_INTEGER;
+		const sortOpen = (a: KaydayTask, b: KaydayTask) => {
+			// if no duration, set to a high number
+			const durationA = a.duration || 9999;
+			const durationB = b.duration || 9999;
+			// if the duration is <= 5 minutes, put it first
+			if(durationA <= 5 && durationB > 5) return -1;
+			if(durationB <= 5 && durationA > 5) return 1;
+			// otherwise, sort by priority (high to low)
+			if(a.priority !== b.priority) return b.priority - a.priority;
+			// then by duration (short to long)
+			if(durationA !== durationB) return durationA - durationB;
+			// finally by title (alphabetical)
+			return a.title.localeCompare(b.title);
+		}
 		tasksDone.sort((a, b) => (b.completedOn?.getTime() ?? 0) - (a.completedOn?.getTime() ?? 0))
-		tasksToday.sort((a, b) => (a.duration || maxInt) - (b.duration || maxInt))
-		tasksUpcoming.sort((a, b) => (b.duration || maxInt) - (a.duration || maxInt))
+		tasksToday.sort(sortOpen)
+		tasksUpcoming.sort(sortOpen)
+		
 		// render task groups
 		this.renderTasksGroup(this.divTasksToday, tasksToday);
 		this.renderTasksGroup(this.divTasksUpcoming, tasksUpcoming);
@@ -156,7 +172,13 @@ export default class KaydayModal extends Modal {
 				cls: 'kayday-context-badge'
 			});
 		}
-		
+		// Add priority badge
+		taskDiv.createEl('span', {
+			text: this.priorityToString(task.priority),
+			cls: 'kayday-context-badge'
+		});
+	
+		// make the whole task div clickable to open the file
 		taskDiv.onclick = () => {
 			this.app.workspace.openLinkText(task.file.path, '', false);
 			this.close();
@@ -199,7 +221,11 @@ export default class KaydayModal extends Modal {
 			// get duration
 			const parsedDuration = parseInt(metadata?.frontmatter?.duration || ''); // in minutes
 			const duration = isNaN(parsedDuration) ? 0 : parsedDuration;
-			// collect task
+			// get priority
+			const priorityRaw = metadata?.frontmatter?.priority || 'low';
+			const priority = this.stringToPriority(priorityRaw);
+			
+			// create task
 			this.tasks.push({
 				file,
 				title: file.basename,
@@ -208,6 +234,7 @@ export default class KaydayModal extends Modal {
 				completedOn,
 				days,
 				duration,
+				priority,
 			})
 		});
 	}
@@ -257,5 +284,27 @@ export default class KaydayModal extends Modal {
 			}
 		}
 		return null
+	}
+
+	private stringToPriority(priorityString: string): KaydayPriority  {
+		switch (priorityString.toLowerCase()) {
+			case 'medium':
+				return 2;
+			case 'high':
+				return 3;
+			default:
+				return 1; // default to low
+		}
+	}
+
+	private priorityToString(priority: KaydayPriority): string {
+		switch (priority) {
+			case 2:
+				return 'medium';
+			case 3:
+				return 'high';
+			default:
+				return 'low';
+		}
 	}
 }
