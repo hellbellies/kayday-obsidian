@@ -10,6 +10,7 @@ type KaydayTask = {
 	repeat: boolean;
 	completedOn: Date | null;
 	days: Array<KaydayWeekday>;
+	hours: Array<number>;
 	duration: number; // in minutes
 	priority: KaydayPriority;
 }
@@ -89,7 +90,7 @@ export default class KaydayModal extends Modal {
 				tasksDone.push(task);
 			} else {
 				// decide if task is due today
-				if(this.isTaskDueToday(task)) {
+				if(this.isTaskDueToday(task) && (task.hours.length === 0 || task.hours.includes(new Date().getHours()))) {
 					tasksToday.push(task);
 				} else {
 					tasksUpcoming.push(task);
@@ -218,6 +219,12 @@ export default class KaydayModal extends Modal {
 			// get days
 			const daysRaw = metadata?.frontmatter?.days as string[] || [];
 			const days: KaydayWeekday[] = daysRaw.map(day => this.stringToDay(day)).filter((day): day is KaydayWeekday => day !== null);
+			// get hours
+			const hoursRaw: string = metadata?.frontmatter?.hours || '';
+			const hours: number[] = hoursRaw.split(',').map(hour => {
+				const parsed = parseInt(hour);
+				return isNaN(parsed) ? -1 : parsed;
+			}).filter(hour => hour >= 0 && hour <= 23);
 			// get duration
 			const parsedDuration = parseInt(metadata?.frontmatter?.duration || ''); // in minutes
 			const duration = isNaN(parsedDuration) ? 0 : parsedDuration;
@@ -233,8 +240,10 @@ export default class KaydayModal extends Modal {
 				repeat,
 				completedOn,
 				days,
+				hours,
 				duration,
 				priority,
+			
 			})
 		});
 	}
