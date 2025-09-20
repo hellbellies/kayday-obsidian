@@ -28,4 +28,8 @@ To complete (uncomplete) a task click on the Icon next to the task's title.
 
 ## Installation
 
-This plugin is currently not in the official addon catalogue. To install it clone this repo into `<vault_repository>/.obsidian/plugins`. Then activate it in Obsidian.
+This plugin is currently not in the official addon catalogue. To install it
+
+-   clone this repo into `<vault_repository>/.obsidian/plugins`
+-   navigate into the repo and run `pnpm build`
+-   then activate it in Obsidian
