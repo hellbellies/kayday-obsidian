@@ -1,11 +1,14 @@
 import { App, Modal, TAbstractFile, TFile, TFolder, setIcon } from 'obsidian';
 
+
+type KaydayWeekday = 0|1|2|3|4|5|6; // 0 = Sunday, 1 = Monday, etc.
 type KaydayTask = {
 	file: TFile;
 	title: string;
 	context: string;
 	repeat: boolean;
 	completedOn: Date | null;
+	days: Array<KaydayWeekday>;
 }
 type KaydayContext = {
 	value: string;
@@ -19,7 +22,8 @@ export default class KaydayModal extends Modal {
 	private selectedContext = '';
 
 	private divFilter: HTMLDivElement | null = null;
-	private divTasksOpen: HTMLDivElement | null = null;
+	private divTasksToday: HTMLDivElement | null = null;
+	private divTasksUpcoming: HTMLDivElement | null = null;
 	private divTasksDone: HTMLDivElement | null = null;
 
 	constructor(app: App) {
@@ -42,8 +46,10 @@ export default class KaydayModal extends Modal {
 		console.log('Building UI...');
 		this.contentEl.empty();
 		this.divFilter = this.contentEl.createDiv({cls: 'kayday-container-filter'});
-		this.contentEl.createEl('div', {text: 'Open Tasks', cls: 'kayday-tasks-header'});
-		this.divTasksOpen = this.contentEl.createDiv({cls: 'kayday-container-tasks'});
+		this.contentEl.createEl('div', {text: 'Today\'s Tasks', cls: 'kayday-tasks-header'});
+		this.divTasksToday = this.contentEl.createDiv({cls: 'kayday-container-tasks'});
+		this.contentEl.createEl('div', {text: 'Upcoming Tasks', cls: 'kayday-tasks-header'});
+		this.divTasksUpcoming = this.contentEl.createDiv({cls: 'kayday-container-tasks'});
 		this.contentEl.createEl('div', {text: 'Completed Tasks', cls: 'kayday-tasks-header'});
 		this.divTasksDone = this.contentEl.createDiv({cls: 'kayday-container-tasks'});
 	}
@@ -67,34 +73,43 @@ export default class KaydayModal extends Modal {
 
 	renderTasks() {
 		// no tasks div, nothing place to render into
-		if(!this.divTasksOpen || !this.divTasksDone) return;
-		
+		if(!this.divTasksUpcoming || !this.divTasksDone || !this.divTasksToday) 
+			return
+
 		// filter tasks based on selected context
 		const tasksFiltered = this.selectedContext ? this.tasks.filter(task => task.context === this.selectedContext) : this.tasks;
-		// separate tasks into open and done
-		const tasksOpen: KaydayTask[] = [];
+		// separate tasks into today, upcoming, and done
+		const tasksUpcoming: KaydayTask[] = [];
+		const tasksToday: KaydayTask[] = [];
 		const tasksDone: KaydayTask[] = [];
 		tasksFiltered.forEach(task => {
 			if(this.isTaskCompleted(task)) {
 				tasksDone.push(task);
 			} else {
-				tasksOpen.push(task);
+				// decide if task is due today
+				if(this.isTaskDueToday(task)) {
+					tasksToday.push(task);
+				} else {
+					tasksUpcoming.push(task);
+				}
 			}
 		});
 
-		// render open tasks
-		this.divTasksOpen.empty();
-		const divTasksOpen = this.divTasksOpen; // for easier access in the loop below
-		tasksOpen.forEach(task => {
-			this.renderTask(task, divTasksOpen);
-		});
+		// render task groups
+		this.renderTasksGroup(this.divTasksToday, tasksToday);
+		this.renderTasksGroup(this.divTasksUpcoming, tasksUpcoming);
+		this.renderTasksGroup(this.divTasksDone, tasksDone);
+	}
 
-		// render done tasks
-		this.divTasksDone.empty();
-		const divTasksDone = this.divTasksDone; // for easier access in the loop below
-		tasksDone.forEach(task => {
-			this.renderTask(task, divTasksDone);
+	private renderTasksGroup(container: HTMLDivElement, tasks: KaydayTask[]) {
+		container.empty();
+		const _container = container; // for easier access in the loop below
+		tasks.forEach(task => {
+			this.renderTask(task, _container);
 		});
+		if(tasks.length === 0) {
+			container.createEl('div', {text: 'No tasks', cls: 'kayday-no-tasks'});
+		}
 	}
 
 	private renderTask(task: KaydayTask, container: HTMLDivElement) {
@@ -144,17 +159,23 @@ export default class KaydayModal extends Modal {
 		
 		// gather tasks and contexts
 		files.forEach(file => {
-			// get and  collect context(s)
+			// get metadata
 			const metadata = app.metadataCache.getFileCache(file);
+			// get context 
 			// TODO: we cannot be sure this is a string and not an array, can we?
 			const context = metadata?.frontmatter?.context || '';
 			if(!this.contexts.find(ctx => ctx.value === context)) {
 				this.contexts.push({ value: context, text: context, active: false });
 			}
+			// get repeat
 			// TODO: how can we be sure this is a boolean and not a string?
 			const repeat = metadata?.frontmatter?.repeat || false;	
+			// get completed data 
 			// TODO: how can we be sure this is a date and not a string?
 			const completedOn = metadata?.frontmatter?.completedOn ? new Date(metadata.frontmatter.completedOn) : null;
+			// get days
+			const daysRaw = metadata?.frontmatter?.days as string[] || [];
+			const days: KaydayWeekday[] = daysRaw.map(day => this.stringToDay(day)).filter((day): day is KaydayWeekday => day !== null);
 			// collect task
 			this.tasks.push({
 				file,
@@ -162,8 +183,15 @@ export default class KaydayModal extends Modal {
 				context,
 				repeat,
 				completedOn,
+				days,
 			})
 		});
+	}
+
+	private isTaskDueToday(task: KaydayTask): boolean {
+		if(!task.days || task.days.length === 0) return true; // no days set, so always due
+		const today = new Date().getDay(); // 0 = Sunday, 1 = Monday, etc.
+		return task.days.includes(today as KaydayWeekday);
 	}
 
 	private isTaskCompleted(task: KaydayTask): boolean {
@@ -178,5 +206,15 @@ export default class KaydayModal extends Modal {
 		return date1.getFullYear() === date2.getFullYear() &&
 			date1.getMonth() === date2.getMonth() &&
 			date1.getDate() === date2.getDate();	
+	}
+
+	private stringToDay(dateString: string): number | null  {
+		const days = [['su', 'sun', 'sunday'], ['mo', 'mon', 'monday'], ['tu', 'tue', 'tuesday'], ['we', 'wed', 'wednesday'], ['th', 'thu', 'thursday'], ['fr', 'fri', 'friday'], ['sa', 'sat', 'saturday']];
+		for (let i = 0; i < days.length; i++) {
+			if (days[i].includes(dateString.toLowerCase())) {
+				return i;
+			}
+		}
+		return null
 	}
 }

@@ -13,6 +13,11 @@ If your plugin does not need CSS, delete this file.
 	margin-bottom: 4px;
 }
 
+.kayday-no-tasks {
+	margin-top: 4px;
+	margin-bottom: 8px;
+}
+
 .kayday-tasks-header {
 	font-size: 12px;
 	font-weight: bold;
