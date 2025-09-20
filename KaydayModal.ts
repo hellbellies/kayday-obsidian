@@ -30,9 +30,9 @@ export default class KaydayModal extends Modal {
 		super(app);
 	}
 
-	onOpen() {
+	async onOpen() {
 		this.titleEl.setText('Kayday');
-		this.collectData(this.app);
+		await this.collectData();
 		this.renderUi();
 		this.renderFilter();
 		this.renderTasks();
@@ -151,8 +151,7 @@ export default class KaydayModal extends Modal {
 	
 	}
 
-	private collectData(app: App) {
-		// TODO: use this.app instead of passing app as parameter
+	private async collectData() {
 		// clear current data
 		this.tasks = [];
 		this.contexts = [];
@@ -202,9 +201,13 @@ export default class KaydayModal extends Modal {
 		const value = completedOn ? null : new Date().toISOString();
 		await this.app.fileManager.processFrontMatter(task.file, (frontmatter) => {
 			frontmatter.completedOn = value;
-		})
+		});
+		
+		// Add a small delay to ensure metadata cache is updated
+		await new Promise(resolve => setTimeout(resolve, 100));
+		
 		// gather data again to update the task in memory
-		this.collectData(this.app);
+		await this.collectData();
 		// re-render the task list
 		this.renderTasks();
 	}
