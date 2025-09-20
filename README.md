@@ -25,3 +25,7 @@ To show the Kayday Todo List either
 -   CMD+P (or CTRL+P on Windows / Linux) to show the command palette and run `Kayday: open`
 
 To complete (uncomplete) a task click on the Icon next to the task's title.
+
+## Installation
+
+This plugin is currently not in the official addon catalogue. To install it clone this repo into `<vault_repository>/.obsidian/plugins`. Then activate it in Obsidian.
