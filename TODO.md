@@ -9,7 +9,7 @@
 -   prepare for submission, submit to BRAT
     -   add the minimal stuff needed for official submission (not really needed, I guess)
     -   install the BRAT plugin, submit to BRAT's list
--   add a command to display Kayday
 -   let user define what the tasks folder should be called in the Settings
+-   rename the `master` branch to `main`
 -   visual: use icons to indicated priority instead of text
 -   visual: the repeating indicator is too big

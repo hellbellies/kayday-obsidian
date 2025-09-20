@@ -1,4 +1,4 @@
-import { App, Editor, MarkdownView, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { App, Plugin, PluginSettingTab, Setting } from 'obsidian';
 import KaydayModal from 'KaydayModal';
 
 interface KaydayPluginSettings {
@@ -17,12 +17,7 @@ export default class KaydayPlugin extends Plugin {
 
 		// This creates an icon in the left ribbon.
 		const ribbonIconEl = this.addRibbonIcon('leaf', 'Kayday', (evt: MouseEvent) => {
-			// Conditions to check
 			new KaydayModal(this.app).open();
-			// const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
-			// if (markdownView) {
-				
-			// }
 		});
 		// Perform additional things with the ribbon
 		ribbonIconEl.addClass('kayday-plugin-ribbon-class');
@@ -34,39 +29,12 @@ export default class KaydayPlugin extends Plugin {
 		// This adds a simple command that can be triggered anywhere
 		this.addCommand({
 			id: 'open-kayday-modal-simple',
-			name: 'Open Kayday modal (simple)',
+			name: 'open',
 			callback: () => {
 				new KaydayModal(this.app).open();
 			}
 		});
-		// This adds an editor command that can perform some operation on the current editor instance
-		this.addCommand({
-			id: 'kayday-editor-command',
-			name: 'Kayday editor command',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
-				console.log(editor.getSelection());
-				editor.replaceSelection('Kayday Editor Command');
-			}
-		});
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
-		this.addCommand({
-			id: 'open-kayday-modal-complex',
-			name: 'Open Kayday modal (complex)',
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new KaydayModal(this.app).open();
-					}
-
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
-				}
-			}
-		});
+		
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new KaydaySettingTab(this.app, this));
