@@ -1,105 +1,91 @@
-//import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TFolder, TFile, WorkspaceLeaf } from 'obsidian';
-import { Plugin, ItemView, WorkspaceLeaf } from 'obsidian';
+import { App, Editor, MarkdownView, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import KaydayModal from 'KaydayModal';
 
-interface KaydaySettings {
-	currentContext: string;
+interface KaydayPluginSettings {
 	mySetting: string;
 }
 
-const DEFAULT_SETTINGS: KaydaySettings = {
-	currentContext: '',
+const DEFAULT_SETTINGS: KaydayPluginSettings = {
 	mySetting: 'default'
 }
 
-export const VIEW_TYPE_KAYDAY_SIDEBAR = 'kayday-sidebar-view';
-
-export class KaydaySidebarView extends ItemView {
-	constructor(leaf: WorkspaceLeaf) {
-		super(leaf);
-	}
-
-	getViewType() {
-		return VIEW_TYPE_KAYDAY_SIDEBAR;
-	}
-
-	getDisplayText() {
-		return 'Kayday Sidebar';
-	}
-
-	async onOpen() {
-		const container = this.containerEl.children[1];
-		container.empty();
-		container.createEl('h3', { text: 'Kayday Sidebar' });
-		container.createEl('p', { text: 'This is the sidebar view for Kayday.' });
-		// You can add more UI elements here as needed
-	}
-	
-	async onClose() {
-		// Cleanup if necessary	
-	}
-}
-
-
-export default class Kayday extends Plugin {
-	settings: KaydaySettings;
-	
+export default class KaydayPlugin extends Plugin {
+	settings: KaydayPluginSettings;
 
 	async onload() {
-		// register sidebar view
-		
-		this.registerView(
-			'kayday-sidebar-view',
-			(leaf) => new KaydaySidebarView(leaf)
-		);
+		await this.loadSettings();
 
-		// Add ribbon icon to open the sidebar
-        this.addRibbonIcon('dice', 'Open Kayday Sidebar', (evt) => {
-            this.activateView();
-        });
+		// This creates an icon in the left ribbon.
+		const ribbonIconEl = this.addRibbonIcon('leaf', 'Kayday Plugin', (evt: MouseEvent) => {
+			// Called when the user clicks the icon.
+			new Notice('This is a notice!');
+			// Conditions to check
+			new KaydayModal(this.app).open();
+			// const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
+			// if (markdownView) {
+				
+			// }
+		});
+		// Perform additional things with the ribbon
+		ribbonIconEl.addClass('kayday-plugin-ribbon-class');
 
-        // Add command to open sidebar
-        this.addCommand({
-            id: 'open-kayday-sidebar',
-            name: 'Open Kayday Sidebar',
-            callback: () => {
-                this.activateView();
-            }
-        });
+		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
+		const statusBarItemEl = this.addStatusBarItem();
+		statusBarItemEl.setText('Status Bar Text');
+
+		// This adds a simple command that can be triggered anywhere
+		this.addCommand({
+			id: 'open-kayday-modal-simple',
+			name: 'Open Kayday modal (simple)',
+			callback: () => {
+				new KaydayModal(this.app).open();
+			}
+		});
+		// This adds an editor command that can perform some operation on the current editor instance
+		this.addCommand({
+			id: 'kayday-editor-command',
+			name: 'Kayday editor command',
+			editorCallback: (editor: Editor, view: MarkdownView) => {
+				console.log(editor.getSelection());
+				editor.replaceSelection('Kayday Editor Command');
+			}
+		});
+		// This adds a complex command that can check whether the current state of the app allows execution of the command
+		this.addCommand({
+			id: 'open-kayday-modal-complex',
+			name: 'Open Kayday modal (complex)',
+			checkCallback: (checking: boolean) => {
+				// Conditions to check
+				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
+				if (markdownView) {
+					// If checking is true, we're simply "checking" if the command can be run.
+					// If checking is false, then we want to actually perform the operation.
+					if (!checking) {
+						new KaydayModal(this.app).open();
+					}
+
+					// This command will only show up in Command Palette when the check function returns true
+					return true;
+				}
+			}
+		});
+
+		// This adds a settings tab so the user can configure various aspects of the plugin
+		this.addSettingTab(new KaydaySettingTab(this.app, this));
+
+		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
+		// Using this function will automatically remove the event listener when this plugin is disabled.
+		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
+			console.log('click', evt);
+		});
+
+		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
+		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
 	}
 
 	onunload() {
-		// Detach any open views of this type
-		this.app.workspace.detachLeavesOfType(VIEW_TYPE_KAYDAY_SIDEBAR);
+
 	}
-
-	// This is our custom method - it should be inside the Plugin class
-    async activateView() {
-        const { workspace } = this.app;
-        
-        let leaf: WorkspaceLeaf | null = null;
-        const leaves = workspace.getLeavesOfType(VIEW_TYPE_KAYDAY_SIDEBAR);
-		/* You can control where your sidebar appears:
-			Right sidebar: workspace.getRightLeaf(false)
-			Left sidebar: workspace.getLeftLeaf(false)
-			Split existing pane: workspace.splitActiveLeaf() 
-		*/
-
-        if (leaves.length > 0) {
-            // View already exists, reveal it
-            leaf = leaves[0];
-        } else {
-            // Create new view in right sidebar
-            leaf = workspace.getRightLeaf(false);
-			if(leaf) {	
-				await leaf.setViewState({ type: VIEW_TYPE_KAYDAY_SIDEBAR, active: true });				
-			}
-        }
-
-        // Reveal the leaf
-		if(leaf) {
-			workspace.revealLeaf(leaf);
-		}
-    }
 
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
@@ -108,48 +94,30 @@ export default class Kayday extends Plugin {
 	async saveSettings() {
 		await this.saveData(this.settings);
 	}
-
-	
 }
 
-// class KaydayModal extends Modal {
-// 	constructor(app: App) {
-// 		super(app);
-// 	}
+class KaydaySettingTab extends PluginSettingTab {
+	plugin: KaydayPlugin;
 
-// 	onOpen() {
-// 		const {contentEl} = this;
-// 		contentEl.setText('Woah!');
-// 	}
+	constructor(app: App, plugin: KaydayPlugin) {
+		super(app, plugin);
+		this.plugin = plugin;
+	}
 
-// 	onClose() {
-// 		const {contentEl} = this;
-// 		contentEl.empty();
-// 	}
-// }
+	display(): void {
+		const {containerEl} = this;
 
-// class KaydaySettingTab extends PluginSettingTab {
-// 	plugin: Kayday;
+		containerEl.empty();
 
-// 	constructor(app: App, plugin: Kayday) {
-// 		super(app, plugin);
-// 		this.plugin = plugin;
-// 	}
-
-// 	display(): void {
-// 		const {containerEl} = this;
-
-// 		containerEl.empty();
-
-// 		new Setting(containerEl)
-// 			.setName('Setting #1')
-// 			.setDesc('It\'s a secret')
-// 			.addText(text => text
-// 				.setPlaceholder('Enter your secret')
-// 				.setValue(this.plugin.settings.mySetting)
-// 				.onChange(async (value) => {
-// 					this.plugin.settings.mySetting = value;
-// 					await this.plugin.saveSettings();
-// 				}));
-// 	}
-// }
+		new Setting(containerEl)
+			.setName('Setting #1')
+			.setDesc('It\'s a secret')
+			.addText(text => text
+				.setPlaceholder('Enter your secret')
+				.setValue(this.plugin.settings.mySetting)
+				.onChange(async (value) => {
+					this.plugin.settings.mySetting = value;
+					await this.plugin.saveSettings();
+				}));
+	}
+}
