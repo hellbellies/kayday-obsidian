@@ -60,7 +60,16 @@ If your plugin does not need CSS, delete this file.
     flex-shrink: 0;
 }
 
+.kayday-task-icon-repeat {
+	display: flex;
+	align-items: center;
+	flex-shrink: 0;
+	color: var(--text-normal);
+}
+
 .kayday-task-title {
+	display: flex;
+	gap: 4px;
     flex: 1;
     color: var(--text-normal);
 }

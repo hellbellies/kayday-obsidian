@@ -5,6 +5,7 @@ type KaydayTask = {
 	title: string;
 	context: string;
 	repeat: boolean;
+	completedOn: Date | null;
 }
 type KaydayContext = {
 	value: string;
@@ -69,16 +70,25 @@ export default class KaydayModal extends Modal {
 
 		const tasksToRender = this.selectedContext ? this.tasks.filter(task => task.context === this.selectedContext) : this.tasks;
 		tasksToRender.forEach(task => {
+			// Determine if the task is completed
+			const isCompleted = this.isTaskCompleted(task);
+
+			// create the task item container
 			const taskDiv = divTasks.createEl('div', {cls: 'kayday-task-item'});
 			
 			// Add task icon
 			const taskIcon = taskDiv.createEl('span', {cls: 'kayday-task-icon'});
 			// Use different icons based on task properties
-			const iconName = task.repeat ? 'refresh-cw' : 'check-square';
+			const iconName = isCompleted ? 'check-square' : 'square';
 			setIcon(taskIcon, iconName);
 			
 			// Add task title
-			taskDiv.createEl('span', {text: task.title, cls: 'kayday-task-title'});
+			const taskTitleDiv = taskDiv.createEl('div', {text: task.title, cls: 'kayday-task-title'});
+			// add repeat icon if repeat is true
+			if(task.repeat) {
+				const repeatIcon = taskTitleDiv.createEl('span', {cls: 'kayday-task-icon-repeat'});
+				setIcon(repeatIcon, 'refresh-cw');
+			}
 			
 			// Add context badge if it exists
 			if (task.context) {
@@ -113,14 +123,32 @@ export default class KaydayModal extends Modal {
 			if(!this.contexts.find(ctx => ctx.value === context)) {
 				this.contexts.push({ value: context, text: context, active: false });
 			}
+			// TODO: how can we be sure this is a boolean and not a string?
 			const repeat = metadata?.frontmatter?.repeat || false;	
+			// TODO: how can we be sure this is a date and not a string?
+			const completedOn = metadata?.frontmatter?.completedOn ? new Date(metadata.frontmatter.completedOn) : null;
 			// collect task
 			this.tasks.push({
 				file,
 				title: file.basename,
 				context,
-				repeat
+				repeat,
+				completedOn,
 			})
 		});
+	}
+
+	private isTaskCompleted(task: KaydayTask): boolean {
+		if(!task.completedOn) return false;
+		if(task.repeat && this.isSameDay(task.completedOn, new Date())) {
+			return true; // completed today
+		}
+		return task.completedOn !== null;
+	}
+
+	private isSameDay(date1: Date, date2: Date): boolean {
+		return date1.getFullYear() === date2.getFullYear() &&
+			date1.getMonth() === date2.getMonth() &&
+			date1.getDate() === date2.getDate();	
 	}
 }
