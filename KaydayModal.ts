@@ -1,9 +1,10 @@
-import { App, Modal, TAbstractFile, TFile, TFolder } from 'obsidian';
+import { App, Modal, TAbstractFile, TFile, TFolder, setIcon } from 'obsidian';
 
 type KaydayTask = {
 	file: TFile;
 	title: string;
 	context: string;
+	repeat: boolean;
 }
 type KaydayContext = {
 	value: string;
@@ -68,7 +69,25 @@ export default class KaydayModal extends Modal {
 
 		const tasksToRender = this.selectedContext ? this.tasks.filter(task => task.context === this.selectedContext) : this.tasks;
 		tasksToRender.forEach(task => {
-			const taskDiv = divTasks.createEl('div', {text: task.title});
+			const taskDiv = divTasks.createEl('div', {cls: 'kayday-task-item'});
+			
+			// Add task icon
+			const taskIcon = taskDiv.createEl('span', {cls: 'kayday-task-icon'});
+			// Use different icons based on task properties
+			const iconName = task.repeat ? 'refresh-cw' : 'check-square';
+			setIcon(taskIcon, iconName);
+			
+			// Add task title
+			taskDiv.createEl('span', {text: task.title, cls: 'kayday-task-title'});
+			
+			// Add context badge if it exists
+			if (task.context) {
+				taskDiv.createEl('span', {
+					text: task.context,
+					cls: 'kayday-context-badge'
+				});
+			}
+			
 			taskDiv.onclick = () => {
 				this.app.workspace.openLinkText(task.file.path, '', false);
 				this.close();
@@ -94,11 +113,13 @@ export default class KaydayModal extends Modal {
 			if(!this.contexts.find(ctx => ctx.value === context)) {
 				this.contexts.push({ value: context, text: context, active: false });
 			}
+			const repeat = metadata?.frontmatter?.repeat || false;	
 			// collect task
 			this.tasks.push({
 				file,
 				title: file.basename,
 				context,
+				repeat
 			})
 		});
 	}
