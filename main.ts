@@ -1,4 +1,4 @@
-import { App, Editor, MarkdownView, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { App, Editor, MarkdownView, Plugin, PluginSettingTab, Setting } from 'obsidian';
 import KaydayModal from 'KaydayModal';
 
 interface KaydayPluginSettings {
@@ -16,9 +16,7 @@ export default class KaydayPlugin extends Plugin {
 		await this.loadSettings();
 
 		// This creates an icon in the left ribbon.
-		const ribbonIconEl = this.addRibbonIcon('leaf', 'Kayday Plugin', (evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
+		const ribbonIconEl = this.addRibbonIcon('leaf', 'Kayday', (evt: MouseEvent) => {
 			// Conditions to check
 			new KaydayModal(this.app).open();
 			// const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
