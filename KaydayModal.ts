@@ -276,7 +276,15 @@ export default class KaydayModal extends Modal {
 		if(task.repeat && this.isSameDay(task.completedOn, new Date())) {
 			return true; // completed today
 		}
-		return task.completedOn !== null;
+		if(task.repeat) {
+			if(this.isSameDay(task.completedOn, new Date())) {
+				return true; // completed today
+			}
+			else {
+				return false; // not completed today
+			}
+		}
+		return true
 	}
 
 	private isSameDay(date1: Date, date2: Date): boolean {
