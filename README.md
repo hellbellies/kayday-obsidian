@@ -16,6 +16,7 @@ The following properties are recognized
 -   `priority` (text) - `high`, `medium`, `low`
 -   `days` (text) - the days the task should be displayed, e.g. `Mon, Tue, Fri`
 -   `hours` (text) - the hours the task should be displayed, e.g. `8, 10` will only display the task between 08:00-08:59 and 10:00-10:59
+-   `silencedUntil` (date) - the task will not show as open task until the entered data
 
 All properties are optional or can be left empty.
 
@@ -33,3 +34,5 @@ This plugin is currently not in the official addon catalogue. To install it
 -   clone this repo into `<vault_repository>/.obsidian/plugins`
 -   navigate into the repo and run `pnpm build`
 -   then activate it in Obsidian
+
+Alternatively you can install the BRAT plugin and install a release of Kayday using its Github address: `https://github.com/hellbellies/kayday-obsidian`
