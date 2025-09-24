@@ -9,6 +9,7 @@ type KaydayTask = {
 	context: string;
 	repeat: boolean;
 	completedOn: Date | null;
+	silencedUntil: Date | null;
 	days: Array<KaydayWeekday>;
 	hours: Array<number>;
 	duration: number; // in minutes
@@ -83,6 +84,7 @@ export default class KaydayModal extends Modal {
 				tasksDone.push(task);
 			} else {
 				// decide if task is due today
+				// TODO: might need to change the method from isTaskDueToday to isTaskDueNow or something like that
 				if(this.isTaskDueToday(task) && (task.hours.length === 0 || task.hours.includes(new Date().getHours()))) {
 					tasksToday.push(task);
 				} else {
@@ -168,7 +170,7 @@ export default class KaydayModal extends Modal {
 		if(task.duration && task.duration > 0) {
 			taskDiv.createEl('span', {
 				text: `${task.duration}'`,
-				cls: 'kayday-context-badge'
+				cls: 'kayday-badge'
 			});
 		}
 		
@@ -176,13 +178,21 @@ export default class KaydayModal extends Modal {
 		if (task.context) {
 			taskDiv.createEl('span', {
 				text: task.context,
-				cls: 'kayday-context-badge'
+				cls: 'kayday-badge'
 			});
+		}
+		// add silence badge if silencedUntil is in the future
+		if (task.silencedUntil && this.isLaterThanToday(task.silencedUntil)) {
+			const silencedBadge = taskDiv.createEl('span', {
+				text: "zzz",
+				cls: 'kayday-badge'
+			});
+			setIcon(silencedBadge, 'moon');
 		}
 		// Add priority badge
 		taskDiv.createEl('span', {
 			text: this.priorityToString(task.priority),
-			cls: 'kayday-context-badge'
+			cls: 'kayday-badge'
 		});
 	
 		// make the whole task div clickable to open the file
@@ -222,6 +232,9 @@ export default class KaydayModal extends Modal {
 			// get completed data 
 			// TODO: make sure this string is a valid date and not a string? does it tell frontmatter what it is?
 			const completedOn = metadata?.frontmatter?.completedOn ? new Date(metadata.frontmatter.completedOn) : null;
+			// get completed data 
+			// TODO: make sure this string is a valid date and not a string? does it tell frontmatter what it is?
+			const silencedUntil = metadata?.frontmatter?.silencedUntil ? new Date(metadata.frontmatter.silencedUntil) : null;
 			// get days
 			const daysRaw = metadata?.frontmatter?.days as string[] || [];
 			const days: KaydayWeekday[] = daysRaw.map(day => this.stringToDay(day)).filter((day): day is KaydayWeekday => day !== null);
@@ -249,7 +262,7 @@ export default class KaydayModal extends Modal {
 				hours,
 				duration,
 				priority,
-			
+				silencedUntil,
 			})
 		});
 	}
@@ -272,7 +285,10 @@ export default class KaydayModal extends Modal {
 	}
 
 	private isTaskDueToday(task: KaydayTask): boolean {
-		if(!task.days || task.days.length === 0) return true; // no days set, so always due
+		if(task.silencedUntil && this.isLaterThanToday(task.silencedUntil))
+			return false; // task is silenced
+		if(!task.days || task.days.length === 0) 
+			return true; // no days set, so always due
 		const today = new Date().getDay(); // 0 = Sunday, 1 = Monday, etc.
 		return task.days.includes(today as KaydayWeekday);
 	}
@@ -297,6 +313,14 @@ export default class KaydayModal extends Modal {
 		return date1.getFullYear() === date2.getFullYear() &&
 			date1.getMonth() === date2.getMonth() &&
 			date1.getDate() === date2.getDate();	
+	}
+
+	private isLaterThanToday(date: Date): boolean {
+		const today = new Date();
+		today.setHours(0, 0, 0, 0);
+		const compareDate = new Date(date);
+		compareDate.setHours(0, 0, 0, 0);
+		return compareDate > today;
 	}
 
 	private stringToDay(dateString: string): number | null  {
