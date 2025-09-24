@@ -14,17 +14,11 @@ If your plugin does not need CSS, delete this file.
 }
 
 .kayday-no-tasks {
-	margin-top: 4px;
-	margin-bottom: 8px;
-}
-
-.kayday-tasks-header {
-	font-size: 12px;
-	font-weight: bold;
+	padding: 4px 4px 4px 16px;
 }
 
 .kayday-container-filter {
-    border-bottom: 1px solid var(--background-modifier-border);
+    /* border-bottom: 1px solid var(--background-modifier-border); */
     padding-bottom: 10px;
     margin-bottom: 15px;
 }
@@ -92,4 +86,35 @@ If your plugin does not need CSS, delete this file.
     padding: 2px 8px;
     border-radius: 12px;
     flex-shrink: 0;
+}
+
+.kayday-collapsible {
+	border-bottom: 1px solid silver;
+}
+.kayday-collapsible:last-child {
+	border-bottom: none;
+}
+/* .kayday-collapsible.open {
+	
+} */
+.kayday-collapsible-header {
+	display: flex;
+	padding: 4px 0 4px 0;
+	gap: 4px;
+	align-items: center;
+	font-size: 12px;
+	font-weight: bold;
+	text-transform: uppercase;
+	cursor: pointer;
+}
+
+.kayday-collapsible-content {
+	display: none;
+}
+.kayday-collapsible.open .kayday-collapsible-content {
+	display: block;
+}
+
+.kayday-collapsible.open .kayday-collapsible-header-icon {
+	transform: rotate(90deg);
 }
