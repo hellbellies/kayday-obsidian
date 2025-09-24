@@ -119,3 +119,11 @@ If your plugin does not need CSS, delete this file.
 .kayday-collapsible.open .kayday-collapsible-header-icon {
 	transform: rotate(90deg);
 }
+
+.kayday-newtask {
+	display: flex;
+	gap: 4px;
+}
+.kayday-newtask input[type=text] {
+	flex: 1;
+}
