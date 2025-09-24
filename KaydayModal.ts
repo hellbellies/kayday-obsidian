@@ -26,9 +26,7 @@ export default class KaydayModal extends Modal {
 	private selectedContext = '';
 
 	private divFilter: HTMLDivElement | null = null;
-	private divTasksToday: HTMLDivElement | null = null;
-	private divTasksUpcoming: HTMLDivElement | null = null;
-	private divTasksDone: HTMLDivElement | null = null;
+	private divTasks: HTMLDivElement | null = null;
 
 	constructor(app: App) {
 		super(app);
@@ -50,12 +48,7 @@ export default class KaydayModal extends Modal {
 		console.log('Building UI...');
 		this.contentEl.empty();
 		this.divFilter = this.contentEl.createDiv({cls: 'kayday-container-filter'});
-		this.contentEl.createEl('div', {text: 'Today\'s Tasks', cls: 'kayday-tasks-header'});
-		this.divTasksToday = this.contentEl.createDiv({cls: 'kayday-container-tasks'});
-		this.contentEl.createEl('div', {text: 'Upcoming Tasks', cls: 'kayday-tasks-header'});
-		this.divTasksUpcoming = this.contentEl.createDiv({cls: 'kayday-container-tasks'});
-		this.contentEl.createEl('div', {text: 'Completed Tasks', cls: 'kayday-tasks-header'});
-		this.divTasksDone = this.contentEl.createDiv({cls: 'kayday-container-tasks'});
+		this.divTasks = this.contentEl.createDiv({cls: 'kayday-container-tasks'});
 	}
 
 	renderFilter() {
@@ -76,7 +69,7 @@ export default class KaydayModal extends Modal {
 
 	renderTasks() {
 		// no tasks div, nothing place to render into
-		if(!this.divTasksUpcoming || !this.divTasksDone || !this.divTasksToday) 
+		if(!this.divTasks) 
 			return
 
 		// filter tasks based on selected context
@@ -117,19 +110,32 @@ export default class KaydayModal extends Modal {
 		tasksUpcoming.sort(sortOpen)
 		
 		// render task groups
-		this.renderTasksGroup(this.divTasksToday, tasksToday);
-		this.renderTasksGroup(this.divTasksUpcoming, tasksUpcoming);
-		this.renderTasksGroup(this.divTasksDone, tasksDone);
+		this.divTasks.empty();
+		this.renderTasksGroup("Today's Tasks", this.divTasks, tasksToday, true);
+		this.renderTasksGroup("Upcoming Tasks", this.divTasks, tasksUpcoming, false);
+		this.renderTasksGroup("Completed Tasks", this.divTasks, tasksDone, false);
 	}
 
-	private renderTasksGroup(container: HTMLDivElement, tasks: KaydayTask[]) {
-		container.empty();
-		const _container = container; // for easier access in the loop below
+	private renderTasksGroup(title: string, container: HTMLDivElement, tasks: KaydayTask[], open: boolean) {
+		// create collapsible
+		const collapsible = container.createEl('div', {cls: `kayday-collapsible${open ? ' open': ''}`});
+		// header
+		const header = collapsible.createEl('div', {cls: 'kayday-collapsible-header'});
+		const headerToggleIcon = header.createEl('span', {cls: 'kayday-collapsible-header-icon'});
+		setIcon(headerToggleIcon, 'chevron-right');
+		header.createEl('span', {text: title});
+		// content
+		const content = collapsible.createEl('div', {cls: 'kayday-collapsible-content'});
+		header.onclick = () => {
+			console.log(title)
+			collapsible.classList.toggle('open');
+		};
+		//const _container = container; // for easier access in the loop below
 		tasks.forEach(task => {
-			this.renderTask(task, _container);
+			this.renderTask(task, content);
 		});
 		if(tasks.length === 0) {
-			container.createEl('div', {text: 'No tasks', cls: 'kayday-no-tasks'});
+			content.createEl('div', {text: 'No tasks', cls: 'kayday-no-tasks'});
 		}
 	}
 
