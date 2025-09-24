@@ -1,4 +1,4 @@
-import { App, Modal, TAbstractFile, TFile, TFolder, setIcon } from 'obsidian';
+import { App, Modal, Notice, TAbstractFile, TFile, TFolder, setIcon } from 'obsidian';
 
 
 type KaydayWeekday = 0|1|2|3|4|5|6; // 0 = Sunday, 1 = Monday, etc.
@@ -28,6 +28,7 @@ export default class KaydayModal extends Modal {
 
 	private divFilter: HTMLDivElement | null = null;
 	private divTasks: HTMLDivElement | null = null;
+	private divNewTask: HTMLDivElement | null = null;
 
 	constructor(app: App) {
 		super(app);
@@ -39,6 +40,7 @@ export default class KaydayModal extends Modal {
 		this.renderUi();
 		this.renderFilter();
 		this.renderTasks();
+		this.renderNewTask();
 	}
 
 	onClose() {
@@ -50,6 +52,7 @@ export default class KaydayModal extends Modal {
 		this.contentEl.empty();
 		this.divFilter = this.contentEl.createDiv({cls: 'kayday-container-filter'});
 		this.divTasks = this.contentEl.createDiv({cls: 'kayday-container-tasks'});
+		this.divNewTask = this.contentEl.createDiv({cls: 'kayday-newtask'});
 	}
 
 	renderFilter() {
@@ -203,6 +206,35 @@ export default class KaydayModal extends Modal {
 	
 	}
 
+	private async renderNewTask() {
+		const create = async() => {
+			const taskTitle = newTaskInput.value.trim();
+			await this.createNewTask(taskTitle);
+			newTaskInput.value = '';
+		}
+		if(!this.divNewTask) return;
+		this.divNewTask.empty();
+		const newTaskInput = this.divNewTask.createEl('input', {type: 'text', placeholder: 'Create new task...'});
+		newTaskInput.addEventListener('keydown', async (e) => {
+			if (e.key === 'Enter') {
+				await create();
+				// // TODO: not dry, same code in button onclick
+				// const taskTitle = newTaskInput.value.trim();
+				// await this.createNewTask(taskTitle);
+				// newTaskInput.value = '';
+			}
+		});
+		// add a button to create the task
+		const newTaskButton = this.divNewTask.createEl('button', {text: 'New Task', cls: 'kayday-newtask-button'});
+		setIcon(newTaskButton, 'plus');
+		newTaskButton.onclick = async () => {
+			await create();
+			// const taskTitle = newTaskInput.value.trim();
+			// await this.createNewTask(taskTitle);
+			// newTaskInput.value = '';
+		};
+	}
+
 	private async collectData() {
 		// clear current data
 		this.tasks = [];
@@ -265,6 +297,31 @@ export default class KaydayModal extends Modal {
 				silencedUntil,
 			})
 		});
+	}
+
+	private async createNewTask(title: string, ) {
+		const kaydayFolder = this.app.vault.getAbstractFileByPath('Kayday');
+		if (!(kaydayFolder instanceof TFolder)) {
+			new Notice('Kayday folder does not exist!');
+			return;
+		}
+		// find a unique name for the new task
+		let index = 1;
+		let newFileName = `${title || 'New Task'}.md`;
+		while (this.app.vault.getAbstractFileByPath(`Kayday/${newFileName}`)) {
+			index++;
+			newFileName = `${title || 'New Task'} ${index}.md`;
+		}
+		// create the new file
+		const newFile = await this.app.vault.create(`Kayday/${newFileName}`, '');
+		if (newFile) {
+			await this.app.fileManager.processFrontMatter(newFile, (frontmatter) => {
+				frontmatter.context = this.selectedContext; // add current context automatically
+				frontmatter.repeat = false;
+			});
+			this.app.workspace.openLinkText(newFile.path, '', false);
+			this.close();
+		}
 	}
 
 	private async toggleCompletedOn(task: KaydayTask) {
