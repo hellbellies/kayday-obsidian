@@ -21,21 +21,29 @@ type KaydayContext = {
 	active: boolean;
 }
 
+type KaydayFilter = {
+	context: string;
+}
+
 export default class KaydayModal extends Modal {
+	private manifestId: string;
+	private filter : KaydayFilter = { context: '' };
 	private tasks: KaydayTask[] = []
 	private contexts: KaydayContext[] = []
-	private selectedContext = '';
 
 	private divFilter: HTMLDivElement | null = null;
 	private divTasks: HTMLDivElement | null = null;
 	private divNewTask: HTMLDivElement | null = null;
 
-	constructor(app: App) {
+
+	constructor(app: App, manifestId: string) {
 		super(app);
+		this.manifestId = manifestId;
 	}
 
 	async onOpen() {
 		this.titleEl.setText('Kayday');
+		this.filter = this.getFilter();
 		await this.collectData();
 		this.renderUi();
 		this.renderFilter();
@@ -44,11 +52,11 @@ export default class KaydayModal extends Modal {
 	}
 
 	onClose() {
+		this.setFilter(this.filter);
 		this.contentEl.empty();
 	}
 
 	renderUi() {
-		console.log('Building UI...');
 		this.contentEl.empty();
 		this.divFilter = this.contentEl.createDiv({cls: 'kayday-container-filter'});
 		this.divTasks = this.contentEl.createDiv({cls: 'kayday-container-tasks'});
@@ -62,11 +70,13 @@ export default class KaydayModal extends Modal {
 		contextSelect.createEl('option', {value: '', text: 'all contexts'});
 		this.contexts.forEach(context => {
 			if(!context.value) return; // skip empty context
-			contextSelect.createEl('option', {value: context.value, text: context.text});
+			const option = contextSelect.createEl('option', {value: context.value, text: context.text});
+			option.selected = (context.value === this.filter.context);
 		});
 		// this.divFilter.appendChild(contextSelect);
 		contextSelect.onchange = (e) => {
-			this.selectedContext = (e.target as HTMLSelectElement).value;
+			this.filter.context = (e.target as HTMLSelectElement).value;
+			this.setFilter(this.filter);
 			this.renderTasks();
 		}
 	}
@@ -77,7 +87,7 @@ export default class KaydayModal extends Modal {
 			return
 
 		// filter tasks based on selected context
-		const tasksFiltered = this.selectedContext ? this.tasks.filter(task => task.context === this.selectedContext) : this.tasks;
+		const tasksFiltered = this.filter.context ? this.tasks.filter(task => task.context === this.filter.context) : this.tasks;
 		// separate tasks into today, upcoming, and done
 		const tasksUpcoming: KaydayTask[] = [];
 		const tasksToday: KaydayTask[] = [];
@@ -316,7 +326,9 @@ export default class KaydayModal extends Modal {
 		const newFile = await this.app.vault.create(`Kayday/${newFileName}`, '');
 		if (newFile) {
 			await this.app.fileManager.processFrontMatter(newFile, (frontmatter) => {
-				frontmatter.context = this.selectedContext; // add current context automatically
+				frontmatter.context = this.filter.context; // add current context automatically
+				frontmatter.duration = 15; // default duration
+				frontmatter.priority = 'low';
 				frontmatter.repeat = false;
 			});
 			this.app.workspace.openLinkText(newFile.path, '', false);
@@ -410,5 +422,14 @@ export default class KaydayModal extends Modal {
 			default:
 				return 'low';
 		}
+	}
+
+	private getFilter(): KaydayFilter {
+		const context = localStorage.getItem(`${this.manifestId}-filter-context`) || '';
+		return { context };
+	}
+
+	private setFilter(filter: KaydayFilter) {
+		localStorage.setItem(`${this.manifestId}-filter-context`, filter.context);
 	}
 }

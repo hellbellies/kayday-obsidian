@@ -17,7 +17,7 @@ export default class KaydayPlugin extends Plugin {
 
 		// This creates an icon in the left ribbon.
 		const ribbonIconEl = this.addRibbonIcon('leaf', 'Kayday', (evt: MouseEvent) => {
-			new KaydayModal(this.app).open();
+			new KaydayModal(this.app, this.manifest.id).open();
 		});
 		// Perform additional things with the ribbon
 		ribbonIconEl.addClass('kayday-plugin-ribbon-class');
@@ -31,7 +31,7 @@ export default class KaydayPlugin extends Plugin {
 			id: 'open-kayday-modal-simple',
 			name: 'open',
 			callback: () => {
-				new KaydayModal(this.app).open();
+				new KaydayModal(this.app, this.manifest.id).open();
 			}
 		});
 		
@@ -42,7 +42,7 @@ export default class KaydayPlugin extends Plugin {
 		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
 		// Using this function will automatically remove the event listener when this plugin is disabled.
 		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			console.log('click', evt);
+			// console.log('click', evt);
 		});
 
 		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
