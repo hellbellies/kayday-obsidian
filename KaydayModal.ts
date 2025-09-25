@@ -1,4 +1,4 @@
-import { App, Modal, Notice, TAbstractFile, TFile, TFolder, setIcon } from 'obsidian';
+import { App, Modal, TFile, setIcon } from 'obsidian';
 
 
 type KaydayWeekday = 0|1|2|3|4|5|6; // 0 = Sunday, 1 = Monday, etc.
@@ -250,13 +250,28 @@ export default class KaydayModal extends Modal {
 		this.tasks = [];
 		this.contexts = [];
 
-		// find Kayday folder
-		const kaydayFolder = this.app.vault.getAbstractFileByPath('Kayday');
-		if (!(kaydayFolder instanceof TFolder)) {
-			return [];
+		// find all files with the "kayday" tag in the vault
+		const files: TFile[] = [];
+		const markdownFiles = this.app.vault.getMarkdownFiles();
+		for( const file of markdownFiles) {
+			const cache = this.app.metadataCache.getFileCache(file);
+			const frontmatterTags = cache?.frontmatter?.tags;
+			if (frontmatterTags) {
+				const tagsArray = Array.isArray(frontmatterTags) ? frontmatterTags : [frontmatterTags];
+				if (tagsArray.map(t => t.toLowerCase()).includes('kayday')) {
+					files.push(file);
+				}
+			}
 		}
-		// get all files in Kayday folder
-		const files = kaydayFolder.children.filter((file: TAbstractFile) => file instanceof TFile) as TFile[];
+		console.log('files', files);
+
+		// find Kayday folder
+		// const kaydayFolder = this.app.vault.getAbstractFileByPath('Kayday');
+		// if (!(kaydayFolder instanceof TFolder)) {
+		// 	return [];
+		// }
+		// // get all files in Kayday folder
+		// const files = kaydayFolder.children.filter((file: TAbstractFile) => file instanceof TFile) as TFile[];
 		
 		// gather tasks and contexts
 		files.forEach(file => {
@@ -310,22 +325,23 @@ export default class KaydayModal extends Modal {
 	}
 
 	private async createNewTask(title: string, ) {
-		const kaydayFolder = this.app.vault.getAbstractFileByPath('Kayday');
-		if (!(kaydayFolder instanceof TFolder)) {
-			new Notice('Kayday folder does not exist!');
-			return;
-		}
+		// const kaydayFolder = this.app.vault.getAbstractFileByPath('Kayday');
+		// if (!(kaydayFolder instanceof TFolder)) {
+		// 	new Notice('Kayday folder does not exist!');
+		// 	return;
+		// }
 		// find a unique name for the new task
 		let index = 1;
 		let newFileName = `${title || 'New Task'}.md`;
-		while (this.app.vault.getAbstractFileByPath(`Kayday/${newFileName}`)) {
+		while (this.app.vault.getAbstractFileByPath(`${newFileName}`)) {
 			index++;
 			newFileName = `${title || 'New Task'} ${index}.md`;
 		}
 		// create the new file
-		const newFile = await this.app.vault.create(`Kayday/${newFileName}`, '');
+		const newFile = await this.app.vault.create(`${newFileName}`, '');
 		if (newFile) {
 			await this.app.fileManager.processFrontMatter(newFile, (frontmatter) => {
+				frontmatter.tags = ['kayday'];
 				frontmatter.context = this.filter.context; // add current context automatically
 				frontmatter.duration = 15; // default duration
 				frontmatter.priority = 'low';
