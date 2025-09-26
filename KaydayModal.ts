@@ -21,20 +21,22 @@ type KaydayContext = {
 	active: boolean;
 }
 
-type KaydayFilter = {
+type KaydayUIState = {
 	context: string;
+	groups: Record<KaydayGroup, boolean>;
 }
+
+type KaydayGroup = 'today' | 'upcoming' | 'completed';
 
 export default class KaydayModal extends Modal {
 	private manifestId: string;
-	private filter : KaydayFilter = { context: '' };
+	private uiState : KaydayUIState = { context: '', groups: { today: true, upcoming: true, completed: true } };
 	private tasks: KaydayTask[] = []
 	private contexts: KaydayContext[] = []
 
 	private divFilter: HTMLDivElement | null = null;
 	private divTasks: HTMLDivElement | null = null;
 	private divNewTask: HTMLDivElement | null = null;
-
 
 	constructor(app: App, manifestId: string) {
 		super(app);
@@ -43,7 +45,7 @@ export default class KaydayModal extends Modal {
 
 	async onOpen() {
 		this.titleEl.setText('Kayday');
-		this.filter = this.getFilter();
+		this.uiState = this.getUiState();
 		await this.collectData();
 		this.renderUi();
 		this.renderFilter();
@@ -52,7 +54,7 @@ export default class KaydayModal extends Modal {
 	}
 
 	onClose() {
-		this.setFilter(this.filter);
+		this.setUiState(this.uiState);
 		this.contentEl.empty();
 	}
 
@@ -71,23 +73,24 @@ export default class KaydayModal extends Modal {
 		this.contexts.forEach(context => {
 			if(!context.value) return; // skip empty context
 			const option = contextSelect.createEl('option', {value: context.value, text: context.text});
-			option.selected = (context.value === this.filter.context);
+			option.selected = (context.value === this.uiState.context);
 		});
 		// this.divFilter.appendChild(contextSelect);
 		contextSelect.onchange = (e) => {
-			this.filter.context = (e.target as HTMLSelectElement).value;
-			this.setFilter(this.filter);
+			this.uiState.context = (e.target as HTMLSelectElement).value;
+			this.setUiState(this.uiState);
 			this.renderTasks();
 		}
 	}
 
-	renderTasks() {
+	async renderTasks() {
+		console.log(`There are ${this.tasks.length} tasks`);
 		// no tasks div, nothing place to render into
 		if(!this.divTasks) 
 			return
 
 		// filter tasks based on selected context
-		const tasksFiltered = this.filter.context ? this.tasks.filter(task => task.context === this.filter.context) : this.tasks;
+		const tasksFiltered = this.uiState.context ? this.tasks.filter(task => task.context === this.uiState.context) : this.tasks;
 		// separate tasks into today, upcoming, and done
 		const tasksUpcoming: KaydayTask[] = [];
 		const tasksToday: KaydayTask[] = [];
@@ -126,13 +129,14 @@ export default class KaydayModal extends Modal {
 		
 		// render task groups
 		this.divTasks.empty();
-		this.renderTasksGroup("Today's Tasks", this.divTasks, tasksToday, true);
-		this.renderTasksGroup("Upcoming Tasks", this.divTasks, tasksUpcoming, false);
-		this.renderTasksGroup("Completed Tasks", this.divTasks, tasksDone, false);
+		await this.renderTasksGroup('today', "Today's Tasks", this.divTasks, tasksToday);
+		await this.renderTasksGroup('upcoming', "Upcoming Tasks", this.divTasks, tasksUpcoming);
+		await this.renderTasksGroup('completed', "Completed Tasks", this.divTasks, tasksDone);
 	}
 
-	private renderTasksGroup(title: string, container: HTMLDivElement, tasks: KaydayTask[], open: boolean) {
+	private async renderTasksGroup(group: KaydayGroup, title: string, container: HTMLDivElement, tasks: KaydayTask[]) {
 		// create collapsible
+		const open = this.uiState.groups[group];
 		const collapsible = container.createEl('div', {cls: `kayday-collapsible${open ? ' open': ''}`});
 		// header
 		const header = collapsible.createEl('div', {cls: 'kayday-collapsible-header'});
@@ -142,10 +146,11 @@ export default class KaydayModal extends Modal {
 		// content
 		const content = collapsible.createEl('div', {cls: 'kayday-collapsible-content'});
 		header.onclick = () => {
-			console.log(title)
 			collapsible.classList.toggle('open');
+			this.uiState.groups[group] = !this.uiState.groups[group];
+			this.setUiState(this.uiState);
 		};
-		//const _container = container; // for easier access in the loop below
+		// render tasks
 		tasks.forEach(task => {
 			this.renderTask(task, content);
 		});
@@ -207,7 +212,18 @@ export default class KaydayModal extends Modal {
 			text: this.priorityToString(task.priority),
 			cls: 'kayday-badge'
 		});
-	
+
+		// Add un-task icon
+		if(isCompleted) {
+			const untaskIcon = taskDiv.createEl('span', {cls: 'kayday-task-icon'});
+			setIcon(untaskIcon, 'bookmark-x');
+			untaskIcon.onclick = async (e) => {
+				e.stopImmediatePropagation();
+				await this.untagTask(task);
+				
+			};
+		}
+
 		// make the whole task div clickable to open the file
 		taskDiv.onclick = () => {
 			this.app.workspace.openLinkText(task.file.path, '', false);
@@ -228,10 +244,6 @@ export default class KaydayModal extends Modal {
 		newTaskInput.addEventListener('keydown', async (e) => {
 			if (e.key === 'Enter') {
 				await create();
-				// // TODO: not dry, same code in button onclick
-				// const taskTitle = newTaskInput.value.trim();
-				// await this.createNewTask(taskTitle);
-				// newTaskInput.value = '';
 			}
 		});
 		// add a button to create the task
@@ -239,9 +251,6 @@ export default class KaydayModal extends Modal {
 		setIcon(newTaskButton, 'plus');
 		newTaskButton.onclick = async () => {
 			await create();
-			// const taskTitle = newTaskInput.value.trim();
-			// await this.createNewTask(taskTitle);
-			// newTaskInput.value = '';
 		};
 	}
 
@@ -263,15 +272,6 @@ export default class KaydayModal extends Modal {
 				}
 			}
 		}
-		console.log('files', files);
-
-		// find Kayday folder
-		// const kaydayFolder = this.app.vault.getAbstractFileByPath('Kayday');
-		// if (!(kaydayFolder instanceof TFolder)) {
-		// 	return [];
-		// }
-		// // get all files in Kayday folder
-		// const files = kaydayFolder.children.filter((file: TAbstractFile) => file instanceof TFile) as TFile[];
 		
 		// gather tasks and contexts
 		files.forEach(file => {
@@ -322,14 +322,10 @@ export default class KaydayModal extends Modal {
 				silencedUntil,
 			})
 		});
+		console.log(`Collected ${this.tasks.length} tasks from ${files.length} files.`);
 	}
 
 	private async createNewTask(title: string, ) {
-		// const kaydayFolder = this.app.vault.getAbstractFileByPath('Kayday');
-		// if (!(kaydayFolder instanceof TFolder)) {
-		// 	new Notice('Kayday folder does not exist!');
-		// 	return;
-		// }
 		// find a unique name for the new task
 		let index = 1;
 		let newFileName = `${title || 'New Task'}.md`;
@@ -342,7 +338,7 @@ export default class KaydayModal extends Modal {
 		if (newFile) {
 			await this.app.fileManager.processFrontMatter(newFile, (frontmatter) => {
 				frontmatter.tags = ['kayday'];
-				frontmatter.context = this.filter.context; // add current context automatically
+				frontmatter.context = this.uiState.context; // add current context automatically
 				frontmatter.duration = 15; // default duration
 				frontmatter.priority = 'low';
 				frontmatter.repeat = false;
@@ -359,10 +355,27 @@ export default class KaydayModal extends Modal {
 		await this.app.fileManager.processFrontMatter(task.file, (frontmatter) => {
 			frontmatter.completedOn = value;
 		});
-		
-		// Add a small delay to ensure metadata cache is updated
+		// Add a small delay to ensure metadata cache is updated TODO: is there a better way?
 		await new Promise(resolve => setTimeout(resolve, 100));
-		
+		// gather data again to update the task in memory
+		await this.collectData();
+		// re-render the task list
+		this.renderTasks();
+	}
+
+	private async untagTask(task: KaydayTask) {
+		// get the tags from frontmatter
+		const cache = this.app.metadataCache.getFileCache(task.file);
+		const frontmatterTags = cache?.frontmatter?.tags;
+		// remove the "kayday" tag
+		if (frontmatterTags) {
+			const tagsArray = Array.isArray(frontmatterTags) ? frontmatterTags : [frontmatterTags];
+			await this.app.fileManager.processFrontMatter(task.file, (frontmatter) => {
+				frontmatter.tags = tagsArray.filter((tag: string) => tag.toLowerCase() !== 'kayday');
+			});
+		}
+		// Add a small delay to ensure metadata cache is updated TODO: is there a better way?
+		await new Promise(resolve => setTimeout(resolve, 100));
 		// gather data again to update the task in memory
 		await this.collectData();
 		// re-render the task list
@@ -440,12 +453,22 @@ export default class KaydayModal extends Modal {
 		}
 	}
 
-	private getFilter(): KaydayFilter {
+	private getUiState(): KaydayUIState {
+		// TODO: JSON parse and validate instead
 		const context = localStorage.getItem(`${this.manifestId}-filter-context`) || '';
-		return { context };
+		const groups = {
+			today: localStorage.getItem(`${this.manifestId}-filter-groups-today`) === 'true',
+			upcoming: localStorage.getItem(`${this.manifestId}-filter-groups-upcoming`) === 'true',
+			completed: localStorage.getItem(`${this.manifestId}-filter-groups-completed`) === 'true',
+		};
+		return { context, groups };
 	}
 
-	private setFilter(filter: KaydayFilter) {
+	private setUiState(filter: KaydayUIState) {
+		// TODO: JSON stringify and validate instead
 		localStorage.setItem(`${this.manifestId}-filter-context`, filter.context);
+		localStorage.setItem(`${this.manifestId}-filter-groups-today`, filter.groups.today.toString());
+		localStorage.setItem(`${this.manifestId}-filter-groups-upcoming`, filter.groups.upcoming.toString());
+		localStorage.setItem(`${this.manifestId}-filter-groups-completed`, filter.groups.completed.toString());
 	}
 }
