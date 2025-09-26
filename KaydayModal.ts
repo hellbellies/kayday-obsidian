@@ -1,5 +1,5 @@
-import { App, Modal, TFile, setIcon } from 'obsidian';
-
+import { App, Modal, Notice, TAbstractFile, TFile, TFolder, setIcon } from 'obsidian';
+import type { KaydaySettings } from 'KaydaySettings';
 
 type KaydayWeekday = 0|1|2|3|4|5|6; // 0 = Sunday, 1 = Monday, etc.
 type KaydayPriority = 1|2|3; // 1 = low, 2 = medium, 3 = high
@@ -30,6 +30,8 @@ type KaydayGroup = 'today' | 'upcoming' | 'completed';
 
 export default class KaydayModal extends Modal {
 	private manifestId: string;
+	private settings: KaydaySettings;
+
 	private uiState : KaydayUIState = { context: '', groups: { today: true, upcoming: true, completed: true } };
 	private tasks: KaydayTask[] = []
 	private contexts: KaydayContext[] = []
@@ -38,8 +40,9 @@ export default class KaydayModal extends Modal {
 	private divTasks: HTMLDivElement | null = null;
 	private divNewTask: HTMLDivElement | null = null;
 
-	constructor(app: App, manifestId: string) {
+	constructor(app: App, manifestId: string, settings: KaydaySettings) {
 		super(app);
+		this.settings = settings;
 		this.manifestId = manifestId;
 	}
 
@@ -267,7 +270,7 @@ export default class KaydayModal extends Modal {
 			const frontmatterTags = cache?.frontmatter?.tags;
 			if (frontmatterTags) {
 				const tagsArray = Array.isArray(frontmatterTags) ? frontmatterTags : [frontmatterTags];
-				if (tagsArray.map(t => t.toLowerCase()).includes('kayday')) {
+				if (tagsArray.map(t => t.toLowerCase()).includes(this.settings.tagForTasks.toLowerCase())) {
 					files.push(file);
 				}
 			}
@@ -326,6 +329,25 @@ export default class KaydayModal extends Modal {
 	}
 
 	private async createNewTask(title: string, ) {
+		// check if tasks folder exists, if not create it
+		const folderPath = this.settings.folderNewTasks;
+		let folder: TAbstractFile | null = this.app.vault.getAbstractFileByPath(folderPath)
+		if(folder && folder instanceof TFolder === false) {
+			new Notice(`Found '${folderPath}' but it is not a folder.`);
+			return;
+		}
+		if(!folder) {
+			try {
+				folder = await this.app.vault.createFolder(folderPath);
+			} catch (e) {
+				console.error(`Could not create folder ${folderPath}:`, e);
+				folder = null;
+			}
+		}
+		if(!folder) {
+			new Notice(`Could not find or create folder '${folderPath}'. Please check your settings and make sure there does not already exist a note of that name.`);
+			return;
+		}
 		// find a unique name for the new task
 		let index = 1;
 		let newFileName = `${title || 'New Task'}.md`;
@@ -334,10 +356,10 @@ export default class KaydayModal extends Modal {
 			newFileName = `${title || 'New Task'} ${index}.md`;
 		}
 		// create the new file
-		const newFile = await this.app.vault.create(`${newFileName}`, '');
+		const newFile = await this.app.vault.create(`${folder.path}/${newFileName}`, '');
 		if (newFile) {
 			await this.app.fileManager.processFrontMatter(newFile, (frontmatter) => {
-				frontmatter.tags = ['kayday'];
+				frontmatter.tags = [this.settings.tagForTasks || 'kayday'];
 				frontmatter.context = this.uiState.context; // add current context automatically
 				frontmatter.duration = 15; // default duration
 				frontmatter.priority = 'low';
@@ -371,7 +393,7 @@ export default class KaydayModal extends Modal {
 		if (frontmatterTags) {
 			const tagsArray = Array.isArray(frontmatterTags) ? frontmatterTags : [frontmatterTags];
 			await this.app.fileManager.processFrontMatter(task.file, (frontmatter) => {
-				frontmatter.tags = tagsArray.filter((tag: string) => tag.toLowerCase() !== 'kayday');
+				frontmatter.tags = tagsArray.filter((tag: string) => tag.toLowerCase() !== (this.settings.tagForTasks || 'kayday'));
 			});
 		}
 		// Add a small delay to ensure metadata cache is updated TODO: is there a better way?

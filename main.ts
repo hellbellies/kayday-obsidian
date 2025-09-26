@@ -1,23 +1,22 @@
 import { App, Plugin, PluginSettingTab, Setting } from 'obsidian';
 import KaydayModal from 'KaydayModal';
+import type { KaydaySettings } from 'KaydaySettings';
 
-interface KaydayPluginSettings {
-	mySetting: string;
-}
 
-const DEFAULT_SETTINGS: KaydayPluginSettings = {
-	mySetting: 'default'
+const DEFAULT_SETTINGS: KaydaySettings = {
+	folderNewTasks: 'Tasks',
+	tagForTasks: 'kayday'
 }
 
 export default class KaydayPlugin extends Plugin {
-	settings: KaydayPluginSettings;
+	settings: KaydaySettings;
 
 	async onload() {
 		await this.loadSettings();
 
 		// This creates an icon in the left ribbon.
 		const ribbonIconEl = this.addRibbonIcon('leaf', 'Kayday', (evt: MouseEvent) => {
-			new KaydayModal(this.app, this.manifest.id).open();
+			new KaydayModal(this.app, this.manifest.id, this.settings).open();
 		});
 		// Perform additional things with the ribbon
 		ribbonIconEl.addClass('kayday-plugin-ribbon-class');
@@ -31,7 +30,7 @@ export default class KaydayPlugin extends Plugin {
 			id: 'open-kayday-modal-simple',
 			name: 'open',
 			callback: () => {
-				new KaydayModal(this.app, this.manifest.id).open();
+				new KaydayModal(this.app, this.manifest.id, this.settings).open();
 			}
 		});
 		
@@ -76,13 +75,23 @@ class KaydaySettingTab extends PluginSettingTab {
 		containerEl.empty();
 
 		new Setting(containerEl)
-			.setName('Setting #1')
-			.setDesc('It\'s a secret')
+			.setName('Folder for new tasks')
+			.setDesc('This is where Kayday will create new tasks')
 			.addText(text => text
-				.setPlaceholder('Enter your secret')
-				.setValue(this.plugin.settings.mySetting)
+				.setPlaceholder('Enter folder path')
+				.setValue(this.plugin.settings.folderNewTasks)
 				.onChange(async (value) => {
-					this.plugin.settings.mySetting = value;
+					this.plugin.settings.folderNewTasks = value;
+					await this.plugin.saveSettings();
+				}));
+		new Setting(containerEl)
+			.setName('Tag for tasks')
+			.setDesc('This is the tag that is used to recognize notes as tasks. Note: changing this will not update existing tasks.')
+			.addText(text => text
+				.setPlaceholder('Enter your tag')
+				.setValue(this.plugin.settings.tagForTasks)
+				.onChange(async (value) => {
+					this.plugin.settings.tagForTasks = value;
 					await this.plugin.saveSettings();
 				}));
 	}
