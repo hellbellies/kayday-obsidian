@@ -1,7 +1,7 @@
 {
 	"id": "app.kayday.obsidian",
 	"name": "Kayday",
-	"version": "1.0.2",
+	"version": "1.0.3",
 	"minAppVersion": "0.15.0",
 	"description": "Kayday in Obsidian",
 	"author": "Martin Imfeld",
