@@ -1,4 +1,4 @@
-import { App, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { App, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
 import KaydayModal from 'KaydayModal';
 import type { KaydaySettings } from 'KaydaySettings';
 
@@ -71,7 +71,7 @@ class KaydaySettingTab extends PluginSettingTab {
 
 	display(): void {
 		const {containerEl} = this;
-
+		let updatedTag: string = this.plugin.settings.tagForTasks; 
 		containerEl.empty();
 
 		new Setting(containerEl)
@@ -86,13 +86,37 @@ class KaydaySettingTab extends PluginSettingTab {
 				}));
 		new Setting(containerEl)
 			.setName('Tag for tasks')
-			.setDesc('This is the tag that is used to recognize notes as tasks. Note: changing this will not update existing tasks.')
+			.setDesc(`This is the tag that is used to recognize notes as tasks. Current: ${this.plugin.settings.tagForTasks}.`)
 			.addText(text => text
 				.setPlaceholder('Enter your tag')
 				.setValue(this.plugin.settings.tagForTasks)
 				.onChange(async (value) => {
-					this.plugin.settings.tagForTasks = value;
+					updatedTag = value;
+				}))
+			.addButton(btn => btn
+				.setButtonText('apply')
+				.onClick(async () => {
+					// get all task files
+					const markdownFiles = this.app.vault.getMarkdownFiles();
+					// update all files that have the old tag in frontmatter
+					for( const file of markdownFiles) {
+						const cache = this.app.metadataCache.getFileCache(file);
+						const frontmatterTags = cache?.frontmatter?.tags;
+						if (frontmatterTags) {
+							const tagsArray = Array.isArray(frontmatterTags) ? frontmatterTags : [frontmatterTags];
+							if (tagsArray.map(t => t.toLowerCase()).includes(this.plugin.settings.tagForTasks.toLowerCase())) {
+								// replace tag in frontmatter
+								const updatedTags = tagsArray.map(t => t.toLowerCase() === this.plugin.settings.tagForTasks.toLowerCase() ? updatedTag : t);
+								await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
+									frontmatter.tags = updatedTags;
+								});
+							}
+						}
+					}
+					// apply settings
+					this.plugin.settings.tagForTasks = updatedTag;
 					await this.plugin.saveSettings();
+					this.display(); // refresh
 				}));
 	}
 }
