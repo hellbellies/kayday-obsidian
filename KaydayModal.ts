@@ -51,9 +51,9 @@ export default class KaydayModal extends Modal {
 		this.uiState = this.getUiState();
 		await this.collectData();
 		this.renderUi();
+		this.renderNewTask();
 		this.renderFilter();
 		this.renderTasks();
-		this.renderNewTask();
 	}
 
 	onClose() {
@@ -63,9 +63,9 @@ export default class KaydayModal extends Modal {
 
 	renderUi() {
 		this.contentEl.empty();
+		this.divNewTask = this.contentEl.createDiv({cls: 'kayday-newtask'});
 		this.divFilter = this.contentEl.createDiv({cls: 'kayday-container-filter'});
 		this.divTasks = this.contentEl.createDiv({cls: 'kayday-container-tasks'});
-		this.divNewTask = this.contentEl.createDiv({cls: 'kayday-newtask'});
 	}
 
 	renderFilter() {

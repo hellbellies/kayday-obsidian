@@ -20,7 +20,7 @@ If your plugin does not need CSS, delete this file.
 .kayday-container-filter {
     /* border-bottom: 1px solid var(--background-modifier-border); */
     padding-bottom: 10px;
-    margin-bottom: 15px;
+    margin-bottom: 4px;
 }
 
 .kayday-filter-container {
@@ -123,6 +123,7 @@ If your plugin does not need CSS, delete this file.
 .kayday-newtask {
 	display: flex;
 	gap: 4px;
+	margin-bottom: 8px;
 }
 .kayday-newtask input[type=text] {
 	flex: 1;
