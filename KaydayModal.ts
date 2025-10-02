@@ -26,15 +26,16 @@ type KaydayUIState = {
 	groups: Record<KaydayGroup, boolean>;
 }
 
-type KaydayGroup = 'today' | 'upcoming' | 'completed';
+type KaydayGroup = 'recent' | 'today' | 'upcoming' | 'completed';
 
 export default class KaydayModal extends Modal {
 	private manifestId: string;
 	private settings: KaydaySettings;
 
-	private uiState : KaydayUIState = { context: '', groups: { today: true, upcoming: true, completed: true } };
+	private uiState : KaydayUIState = { context: '', groups: { recent: false, today: true, upcoming: false, completed: false } };
 	private tasks: KaydayTask[] = []
 	private contexts: KaydayContext[] = []
+	private recentlyMutatedFiles: TFile[] = [];
 
 	private divFilter: HTMLDivElement | null = null;
 	private divTasks: HTMLDivElement | null = null;
@@ -132,6 +133,7 @@ export default class KaydayModal extends Modal {
 		
 		// render task groups
 		this.divTasks.empty();
+		await this.renderFilesGroup('recent', "Recently Edited Files", this.divTasks, this.recentlyMutatedFiles);
 		await this.renderTasksGroup('today', "Today's Tasks", this.divTasks, tasksToday);
 		await this.renderTasksGroup('upcoming', "Upcoming Tasks", this.divTasks, tasksUpcoming);
 		await this.renderTasksGroup('completed', "Completed Tasks", this.divTasks, tasksDone);
@@ -159,6 +161,31 @@ export default class KaydayModal extends Modal {
 		});
 		if(tasks.length === 0) {
 			content.createEl('div', {text: 'No tasks', cls: 'kayday-no-tasks'});
+		}
+	}
+
+	private async renderFilesGroup(group: KaydayGroup, title: string, container: HTMLDivElement, files: TFile[]) {
+		// create collapsible
+		const open = this.uiState.groups[group];
+		const collapsible = container.createEl('div', {cls: `kayday-collapsible${open ? ' open': ''}`});
+		// header
+		const header = collapsible.createEl('div', {cls: 'kayday-collapsible-header'});
+		const headerToggleIcon = header.createEl('span', {cls: 'kayday-collapsible-header-icon'});
+		setIcon(headerToggleIcon, 'chevron-right');
+		header.createEl('span', {text: title});
+		// content
+		const content = collapsible.createEl('div', {cls: 'kayday-collapsible-content'});
+		header.onclick = () => {
+			collapsible.classList.toggle('open');
+			this.uiState.groups[group] = !this.uiState.groups[group];
+			this.setUiState(this.uiState);
+		};
+		// render files
+		files.forEach(file => {
+			this.renderFile(file, content);
+		});
+		if(files.length === 0) {
+			content.createEl('div', {text: 'No files', cls: 'kayday-no-tasks'});
 		}
 	}
 
@@ -235,6 +262,20 @@ export default class KaydayModal extends Modal {
 	
 	}
 
+	private async renderFile(file: TFile, container: HTMLDivElement) {
+		// create the task item container
+		const fileDiv = container.createEl('div', {cls: 'kayday-task-item'});
+		
+		// Add file title
+		fileDiv.createEl('div', {text: file.basename, cls: 'kayday-task-title'});
+
+		// make it clickable to open the file
+		fileDiv.onclick = () => {
+			this.app.workspace.openLinkText(file.path, '', false);
+			this.close();
+		}
+	}
+
 	private async renderNewTask() {
 		const create = async() => {
 			const taskTitle = newTaskInput.value.trim();
@@ -261,6 +302,7 @@ export default class KaydayModal extends Modal {
 		// clear current data
 		this.tasks = [];
 		this.contexts = [];
+		this.recentlyMutatedFiles = [];
 
 		// find all files with the "kayday" tag in the vault
 		const files: TFile[] = [];
@@ -325,6 +367,11 @@ export default class KaydayModal extends Modal {
 				silencedUntil,
 			})
 		});
+
+		// sort files by mutation date, most recently mutated first
+		markdownFiles.sort((a, b) => b.stat.mtime - a.stat.mtime);
+		this.recentlyMutatedFiles = markdownFiles.slice(0, 3); // 
+
 		console.log(`Collected ${this.tasks.length} tasks from ${files.length} files.`);
 	}
 
@@ -480,6 +527,7 @@ export default class KaydayModal extends Modal {
 		// TODO: JSON parse and validate instead
 		const context = localStorage.getItem(`${this.manifestId}-filter-context`) || '';
 		const groups = {
+			recent: localStorage.getItem(`${this.manifestId}-filter-groups-recent`) === 'true',
 			today: localStorage.getItem(`${this.manifestId}-filter-groups-today`) === 'true',
 			upcoming: localStorage.getItem(`${this.manifestId}-filter-groups-upcoming`) === 'true',
 			completed: localStorage.getItem(`${this.manifestId}-filter-groups-completed`) === 'true',
@@ -490,6 +538,7 @@ export default class KaydayModal extends Modal {
 	private setUiState(filter: KaydayUIState) {
 		// TODO: JSON stringify and validate instead
 		localStorage.setItem(`${this.manifestId}-filter-context`, filter.context);
+		localStorage.setItem(`${this.manifestId}-filter-groups-recent`, filter.groups.recent.toString());
 		localStorage.setItem(`${this.manifestId}-filter-groups-today`, filter.groups.today.toString());
 		localStorage.setItem(`${this.manifestId}-filter-groups-upcoming`, filter.groups.upcoming.toString());
 		localStorage.setItem(`${this.manifestId}-filter-groups-completed`, filter.groups.completed.toString());
