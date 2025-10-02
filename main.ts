@@ -1,4 +1,4 @@
-import { App, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
+import { App, Plugin, PluginSettingTab, Setting } from 'obsidian';
 import KaydayModal from 'KaydayModal';
 import type { KaydaySettings } from 'KaydaySettings';
 

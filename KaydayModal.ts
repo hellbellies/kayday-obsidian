@@ -377,8 +377,8 @@ export default class KaydayModal extends Modal {
 		await this.app.fileManager.processFrontMatter(task.file, (frontmatter) => {
 			frontmatter.completedOn = value;
 		});
-		// Add a small delay to ensure metadata cache is updated TODO: is there a better way?
-		await new Promise(resolve => setTimeout(resolve, 100));
+		// wait for the metadata cache to update
+		await this.waitForCacheUpdate(task.file);
 		// gather data again to update the task in memory
 		await this.collectData();
 		// re-render the task list
@@ -398,6 +398,7 @@ export default class KaydayModal extends Modal {
 		}
 		// Add a small delay to ensure metadata cache is updated TODO: is there a better way?
 		await new Promise(resolve => setTimeout(resolve, 100));
+		
 		// gather data again to update the task in memory
 		await this.collectData();
 		// re-render the task list
@@ -492,5 +493,17 @@ export default class KaydayModal extends Modal {
 		localStorage.setItem(`${this.manifestId}-filter-groups-today`, filter.groups.today.toString());
 		localStorage.setItem(`${this.manifestId}-filter-groups-upcoming`, filter.groups.upcoming.toString());
 		localStorage.setItem(`${this.manifestId}-filter-groups-completed`, filter.groups.completed.toString());
+	}
+
+	private waitForCacheUpdate(file: TFile): Promise<void> {
+		return new Promise((resolve) => {
+			const handler = (updatedFile: TFile) => {
+				if (updatedFile.path === file.path) {
+					this.app.metadataCache.off('changed', handler);
+					resolve();
+				}
+			};
+			this.app.metadataCache.on('changed', handler);
+		});
 	}
 }
