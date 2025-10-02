@@ -15,10 +15,10 @@ To show the Kayday Task List either
 
 Either
 
-- add a note and tag it with `kayday` (you can change the tag used to identify task inside Kayday's settings)
-- inside the Kayday Task List use the textfield to add a new task
-  - a new note will be added to the Folder you set in Kayday's settings (default is `Tasks`)
-  - the note will automatically be tagged with the tag used to recognize tasks
+-   add a note and tag it with `kayday` (you can change the tag used to identify task inside Kayday's settings)
+-   inside the Kayday Task List use the textfield to add a new task
+    -   a new note will be added to the Folder you set in Kayday's settings (default is `Tasks`)
+    -   the note will automatically be tagged with the tag used to recognize tasks
 
 ### Adding metadata to a task
 
@@ -47,3 +47,14 @@ This plugin is currently not in the official addon catalogue. To install it
 -   then activate it in Obsidian
 
 Alternatively you can install the BRAT plugin and install a release of Kayday using its Github address: `https://github.com/hellbellies/kayday-obsidian`
+
+## Alfred workflow
+
+There is also a simple Alfred Workflow. To use it
+
+-   import the `Alfred Workflow.alfredworkflow` into Alfred
+-   configure the workflow
+    -   click on configure
+    -   select the path to the folder in your vault where you want to put new tasks
+    -   enter the tag Kayday uses to recognize tasks (default: `task`)
+-   toggle alfred and type `kayday` followed by a space and the name of the task
